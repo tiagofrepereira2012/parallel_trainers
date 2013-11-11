@@ -8,10 +8,10 @@ from setuptools import setup, find_packages
 # parameters that define our package.
 setup(
 
-    name='antispoofing.lbptop',
-    version='1.0.3',
-    description='LBP-TOP based countermeasure against facial spoofing attacks',
-    url='http://pypi.python.org/pypi/antispoofing.lbptop',
+    name='parallel_trainers',
+    version='0.0.0a1',
+    description='Paralll',
+    url='http://pypi.python.org/pypi/',
     license='GPLv3',
     author='Tiago de Freitas Pereira',
     author_email='tiagofrepereira@gmail.com',
@@ -22,27 +22,19 @@ setup(
     include_package_data = True,
 
     install_requires=[
+        "setuptools",
         "bob >= 1.1.0",      # base signal proc./machine learning library
-        "xbob.db.replay", # Replay-Attack database
-        "xbob.db.casia_fasd", #CASIA database
-        "antispoofing.utils",  #Utils Package
     ],
 
     namespace_packages = [
-      'antispoofing',
+      'parallel_trainers'
       ],
 
     entry_points={
       'console_scripts': [
-        'lbptop_calculate_parameters.py = antispoofing.lbptop.script.lbptop_calculate_parameters:main',
-        'lbptop_cmphistmodels.py = antispoofing.lbptop.script.lbptop_cmphistmodels:main',
-        'lbptop_ldatrain.py = antispoofing.lbptop.script.lbptop_ldatrain:main',
-        'lbptop_make_scores.py = antispoofing.lbptop.script.lbptop_make_scores:main',
-        'lbptop_mkhistmodel.py = antispoofing.lbptop.script.lbptop_mkhistmodel:main',
-        'lbptop_result_analysis.py = antispoofing.lbptop.script.lbptop_result_analysis:main',
-        'lbptop_svmtrain.py  = antispoofing.lbptop.script.lbptop_svmtrain:main',
-        ],
-      },
+        'ubm_trainer.py = parallel_trainers.trainers.script.ubm_trainer:main'
+      ],
+    },
 
     classifiers = [
       'Development Status :: 5 - Production/Stable',
