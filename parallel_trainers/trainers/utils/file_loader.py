@@ -4,6 +4,7 @@
 
 from facereclib.toolchain import FileSelector
 import numpy
+import bob
 
 
 class FileLoader:
@@ -38,7 +39,7 @@ class FileLoader:
     dim     = 0
     counter = 0
     for o in self.list:
-      s,dim = get_shape(o)
+      s,dim = self.get_shape(o)
       counter = counter + s
 
     #pre-allocating
@@ -46,11 +47,13 @@ class FileLoader:
     
     #Loading the feaiures
     i = 0
-    for o in list_:
-      f = load_features_from_object(o)
+    for o in self.list:
+      f = self.load_features_from_object(o)
       s = f.shape[0]
       features[i:i+s,:] = f
       i = i + s
+
+    return features
 
 
   def get_shape(self,o):
@@ -61,7 +64,7 @@ class FileLoader:
         File object
     """
 
-    f = load_features_from_object(o)
+    f = self.load_features_from_object(o)
     return f.shape
 
 
@@ -76,5 +79,5 @@ class FileLoader:
    
     """
 
-    full_filename = os.path.join(original_directory,o.path+extension)
+    full_filename = o
     return bob.io.load(full_filename)
