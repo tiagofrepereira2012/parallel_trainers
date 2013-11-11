@@ -24,6 +24,7 @@ setup(
     install_requires=[
         "setuptools",
         "bob >= 1.1.0",      # base signal proc./machine learning library
+        "facereclib",
     ],
 
     namespace_packages = [
@@ -34,6 +35,21 @@ setup(
       'console_scripts': [
         'ubm_trainer.py = parallel_trainers.trainers.script.ubm_trainer:main'
       ],
+
+      # registered database short cuts
+      'databases': [
+        'cpqd_smartphone_male    = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_male:database',
+        'cpqd_notebook_male      = parallel_trainers.trainers.configurations.databases.cpqd_notebook_male:database',
+        'cpqd_n2s_male           = parallel_trainers.trainers.configurations.databases.cpqd_n2s_male:database',
+        'cpqd_s2n_male           = parallel_trainers.trainers.configurations.databases.cpqd_s2n_male:database',
+
+        'cpqd_notebook_female    = parallel_trainers.trainers.configurations.databases.cpqd_notebook_female:database',
+        'cpqd_smartphone_female  = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_female:database',
+        'cpqd_n2s_female         = parallel_trainers.trainers.configurations.databases.cpqd_n2s_female:database',
+        'cpqd_s2n_female         = parallel_trainers.trainers.configurations.databases.cpqd_s2n_female:database',
+      ],
+
+
     },
 
     classifiers = [
