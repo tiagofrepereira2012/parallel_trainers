@@ -88,6 +88,7 @@ def main():
   if(rank==0):
     print("Loading features...")
     whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
+    #whole_data = whole_data[0:50000,:]
     #whole_data = numpy.random.rand(50000, 44)
 
     #sending the proper data for each node
@@ -119,9 +120,16 @@ def main():
     #if it was not, RUN the kmeans
 
     e_kmeans_machine = bob.machine.KMeansMachine(gaussians,dim)
+
+    e_kmeans_trainer                       = bob.trainer.KMeansTrainer()
+    e_kmeans_trainer.initialize(e_kmeans_machine,partial_data)
+
     if(rank==0):
       print("Parallel Kmeans")
       m_kmeans_machine = bob.machine.KMeansMachine(gaussians,dim)
+
+      m_kmeans_trainer = bob.trainer.KMeansTrainer()
+      m_kmeans_trainer.initialize(m_kmeans_machine, partial_data)
 
     ####
     # RUN K-means
@@ -142,8 +150,8 @@ def main():
       ####
       #K-means E Step
       ####
-      e_kmeans_trainer                       = bob.trainer.KMeansTrainer()
-      e_kmeans_trainer.initialize(e_kmeans_machine,partial_data)
+      #e_kmeans_trainer                       = bob.trainer.KMeansTrainer()
+      #e_kmeans_trainer.initialize(e_kmeans_machine,partial_data)
       e_kmeans_trainer.e_step(e_kmeans_machine,partial_data)
 
       #Preparing the KMEANS Statistics for reduce
@@ -174,14 +182,14 @@ def main():
         print("  M Step")
 
         # Creates the KMeansTrainer
-        m_kmeans_trainer = bob.trainer.KMeansTrainer()
-        m_kmeans_trainer.initialize(m_kmeans_machine, partial_data)
+        #m_kmeans_trainer = bob.trainer.KMeansTrainer()
+        #m_kmeans_trainer.initialize(m_kmeans_machine, partial_data)
 
         m_kmeans_trainer.zeroeth_order_statistics = reduce_zeroeth_order_statistics
         m_kmeans_trainer.first_order_statistics   = reduce_first_order_statistics
         m_kmeans_trainer.average_min_distance     = reduce_average_min_distance[0]
 
-        m_kmeans_trainer.m_step(m_kmeans_machine, partial_data) #m-step
+        m_kmeans_trainer.m_step(m_kmeans_machine, whole_data) #m-step
 
         ###########
         #testing convergence
@@ -189,11 +197,10 @@ def main():
         average_likelihood = m_kmeans_trainer.average_min_distance
         conv               = abs((average_likelihood_previous - average_likelihood)/average_likelihood_previous)
         print(conv)
+        print(average_likelihood)
         if(conv < K_MEANS_CONVERGENCE_THRESHOLD):
           run = False
         average_likelihood_previous = average_likelihood
-
-
 
         fresh_means = m_kmeans_machine.means
 
@@ -210,6 +217,7 @@ def main():
         [variances, weights] = m_kmeans_machine.get_variances_and_weights_for_each_cluster(whole_data)
 
     #Fetching the new means, variance and weight to start the UBM training
+    print("Transmmiting the start means, variances and weights")
     means     = comm.bcast(means, root=0)
     variances = comm.bcast(variances, root=0)
     weights   = comm.bcast(weights, root=0)
