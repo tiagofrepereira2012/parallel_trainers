@@ -12,24 +12,6 @@ from mpi4py import MPI
 from parallel_trainers.trainers.utils.file_loader import FileLoader
 
 
-def train_kmeans(data, gaussians, dim):
-  #Starting the kmeans (MUST BE SERIAL)
-  kmeans = bob.machine.KMeansMachine(gaussians, dim)
-  kmeansTrainer                       = bob.trainer.KMeansTrainer()
-  kmeansTrainer.max_iterations        = 500
-  kmeansTrainer.convergence_threshold = 0.0001
-  kmeansTrainer.rng                   = bob.core.random.mt19937(5489)
-  kmeansTrainer.train(kmeans, data)
-
-  #GMM Trainer and machine
-  [variances, weights] = kmeans.get_variances_and_weights_for_each_cluster(data)
-  means = kmeans.means
-
-  return means,variances,weights
-
-
-
-
 def main():
 
   DATABASES_RESOURCE_NAME       = "databases"
@@ -76,9 +58,10 @@ def main():
   size        = comm.Get_size() #Number of parallel process for T-matrix calculation
 
   
-  means        = None
-  variances    = None
-  weights      = None
+  #means        = None
+  #variances    = None
+  #weights      = None
+  base_ubm     =  None
   partial_data = None
   fresh_means  = None
 
@@ -110,18 +93,15 @@ def main():
 
   #Setting UP the initialization
   if(ubm_initialization != ""):
-    #if it was from a previous UBM, load from there
     print("Load UBM from: " + ubm_initialization)
-    previous_ubm = utils.load_gmm_from_file(ubm_initialization, gaussians, dim)
-    means     = previous_ubm.means
-    variances = previous_ubm.variances
-    weights   = previous_ubm.weights
+    base_ubm = utils.load_gmm_from_file(ubm_initialization, gaussians, dim)
   else:
     #if it was not, RUN the kmeans
 
     e_kmeans_machine = bob.machine.KMeansMachine(gaussians,dim)
 
     e_kmeans_trainer                       = bob.trainer.KMeansTrainer()
+    #e_kmeans_trainer.initialization_method = bob.trainer._trainer.initialization_method_type.RANDOM_NO_DUPLICATE
     e_kmeans_trainer.initialize(e_kmeans_machine,partial_data)
 
     if(rank==0):
@@ -129,6 +109,7 @@ def main():
       m_kmeans_machine = bob.machine.KMeansMachine(gaussians,dim)
 
       m_kmeans_trainer = bob.trainer.KMeansTrainer()
+      #m_kmeans_trainer.initialization_method = bob.trainer._trainer.initialization_method_type.RANDOM_NO_DUPLICATE
       m_kmeans_trainer.initialize(m_kmeans_machine, partial_data)
 
     ####
@@ -150,8 +131,6 @@ def main():
       ####
       #K-means E Step
       ####
-      #e_kmeans_trainer                       = bob.trainer.KMeansTrainer()
-      #e_kmeans_trainer.initialize(e_kmeans_machine,partial_data)
       e_kmeans_trainer.e_step(e_kmeans_machine,partial_data)
 
       #Preparing the KMEANS Statistics for reduce
@@ -159,17 +138,14 @@ def main():
         reduce_zeroeth_order_statistics = numpy.zeros(e_kmeans_trainer.zeroeth_order_statistics.shape, e_kmeans_trainer.zeroeth_order_statistics.dtype)
         reduce_first_order_statistics   = numpy.zeros(e_kmeans_trainer.first_order_statistics.shape, e_kmeans_trainer.first_order_statistics.dtype)
         reduce_average_min_distance    = numpy.zeros((1),dtype='float')
-        #reduce_n_samples               = numpy.zeros((1),int)
       else:
         reduce_zeroeth_order_statistics = None
         reduce_first_order_statistics   = None
         reduce_average_min_distance    = None
-        #reduce_n_samples               = None
  
 
       #Summing up the K Means Statistics
       comm.Reduce(numpy.array([e_kmeans_trainer.average_min_distance])     ,reduce_average_min_distance     , op=MPI.SUM, root=0)
-      #comm.Reduce(numpy.array([partial_data.shape[0]])                     ,reduce_n_samples                , op=MPI.SUM, root=0)
       comm.Reduce(e_kmeans_trainer.zeroeth_order_statistics                ,reduce_zeroeth_order_statistics , op=MPI.SUM, root=0)
       comm.Reduce(e_kmeans_trainer.first_order_statistics                  ,reduce_first_order_statistics   , op=MPI.SUM, root=0)
  
@@ -182,9 +158,6 @@ def main():
         print("  M Step")
 
         # Creates the KMeansTrainer
-        #m_kmeans_trainer = bob.trainer.KMeansTrainer()
-        #m_kmeans_trainer.initialize(m_kmeans_machine, partial_data)
-
         m_kmeans_trainer.zeroeth_order_statistics = reduce_zeroeth_order_statistics
         m_kmeans_trainer.first_order_statistics   = reduce_first_order_statistics
         m_kmeans_trainer.average_min_distance     = reduce_average_min_distance[0]
@@ -196,8 +169,6 @@ def main():
         ##########
         average_likelihood = m_kmeans_trainer.average_min_distance
         conv               = abs((average_likelihood_previous - average_likelihood)/average_likelihood_previous)
-        print(conv)
-        print(average_likelihood)
         if(conv < K_MEANS_CONVERGENCE_THRESHOLD):
           run = False
         average_likelihood_previous = average_likelihood
@@ -209,19 +180,19 @@ def main():
       e_kmeans_machine.means = comm.bcast(fresh_means,root=0)
 
 
-    ##Broadcasting the means, variances and weights    
-    if(rank==0):
+    ##Saving the startGMM   
+    if(rank==0):    
+      base_ubm       = bob.machine.GMMMachine(gaussians, dim)
+      base_ubm.means       = m_kmeans_machine.means
+      [variances, weights] = m_kmeans_machine.get_variances_and_weights_for_each_cluster(whole_data)
+      base_ubm.variances   = variances
+      base_ubm.weights     = weights
+      utils.save_gmm(base_ubm, output_file)
 
-      if(ubm_initialization == ""):
-        means = m_kmeans_machine.means
-        [variances, weights] = m_kmeans_machine.get_variances_and_weights_for_each_cluster(whole_data)
 
-    #Fetching the new means, variance and weight to start the UBM training
-    print("Transmmiting the start means, variances and weights")
-    means     = comm.bcast(means, root=0)
-    variances = comm.bcast(variances, root=0)
-    weights   = comm.bcast(weights, root=0)
-
+    print("Waiting UBM trainer")
+    comm.Barrier() #Synchronization barrier in order to all process load the base_ubm
+    base_ubm = utils.load_gmm_from_file(output_file, gaussians, dim) #loading the kmeans UBM for each node
 
 
 
@@ -233,17 +204,11 @@ def main():
     print("############################")
     print("UBM - Training")
     #Creating the M machine (the Machine that will run the m-step)
-    m_machine                 = bob.machine.GMMMachine(gaussians, dim)
-    m_machine.means           = means
-    m_machine.variances       = variances
-    m_machine.weights         = weights
+    m_machine                 = bob.machine.GMMMachine(base_ubm)
 
   #Creating the E machine (the Machine that will run the e step)
-  e_machine                 = bob.machine.GMMMachine(gaussians,dim)
-  e_machine.means           = means
-  e_machine.variances       = variances
-  e_machine.weights         = weights
-  
+  e_machine                 = bob.machine.GMMMachine(base_ubm)
+
 
   ###################
   ###### START
@@ -322,7 +287,6 @@ def main():
       ##########
       average_likelihood = utils.compute_likelihood(sum_stats)
       conv               = abs((average_likelihood_previous - average_likelihood)/average_likelihood_previous)
-      #print(conv)
       if(conv < convergence_threshold):
         run = False
       average_likelihood_previous = average_likelihood

@@ -33,7 +33,8 @@ setup(
 
     entry_points={
       'console_scripts': [
-        'ubm_trainer.py = parallel_trainers.trainers.script.ubm_trainer:main'
+        'ubm_trainer.py   = parallel_trainers.trainers.script.ubm_trainer:main',
+        'isv_U_trainer.py = parallel_trainers.trainers.script.isv_U_trainer:main'
       ],
 
       # registered database short cuts

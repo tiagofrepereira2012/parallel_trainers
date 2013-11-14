@@ -43,7 +43,7 @@ def select_data(data, number_process, rank):
   return data[selected_indexes]
 
 
-def load_features_from_resources(database_list, database_resource_name):
+def load_features_from_resources(database_list, database_resource_name, arrange_by_client=False):
   """
   Load a set of features from a database resource
 
@@ -52,7 +52,7 @@ def load_features_from_resources(database_list, database_resource_name):
   whole_data = None
   for d in database_list:
     db = resources.load_resource(database_resource_name, d)
-    file_loader = FileLoader(db)
+    file_loader = FileLoader(db, arrange_by_client=arrange_by_client)
     whole_data = file_loader()
   
   return whole_data
