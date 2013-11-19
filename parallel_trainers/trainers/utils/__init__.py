@@ -30,6 +30,26 @@ def save_gmm(gmm, file_name):
   bob.machine.GMMMachine.save(gmm,hdf5file)
 
 
+def save_isvbase(isv_base, file_name, ubm=None):
+  """
+  Save a isv base in a file
+  """
+  hdf5file = bob.io.HDF5File(file_name,openmode_string='w')
+
+  if(ubm==None):
+    isv_base.save(hdf5file)
+  else:
+    hdf5file.create_group('Projector')
+    hdf5file.cd('Projector')
+    ubm.save(hdf5file)
+
+    hdf5file.cd('/')
+    hdf5file.create_group('Enroller')
+    hdf5file.cd('Enroller')
+    isv_base.save(hdf5file)
+
+
+
 def select_data(data, number_process, rank):
   """
   Split the data according a rank ID and the number of process
@@ -41,6 +61,9 @@ def select_data(data, number_process, rank):
   selected_indexes = list(numpy.where(mod==rank)[0])
 
   return data[selected_indexes]
+
+
+
 
 
 def load_features_from_resources(database_list, database_resource_name, arrange_by_client=False):

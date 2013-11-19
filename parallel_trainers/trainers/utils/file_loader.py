@@ -40,7 +40,7 @@ class FileLoader:
     if(self.arrange_by_client):
       features = []
       for f in self.list:
-        features.append(self._load_features_from_list(f))
+        features.append(self._load_features_from_list_per_user(f))
       return features
     else:
       return self._load_features_from_list(self.list)
@@ -65,10 +65,29 @@ class FileLoader:
       s = f.shape[0]
       features[i:i+s,:] = f
       i = i + s
-
     return features
 
 
+  def _load_features_from_list_per_user(self, list_files):
+    #Counting for pre-allocation
+    dim     = 0
+   
+    if(len(list_files) > 0):
+      size,dim = self.get_shape(list_files[0])
+    else:
+      raise ValueError("Empty list!!")
+
+    #pre-allocating
+    features = numpy.zeros(shape=(len(list_files),size,dim), dtype='float')
+
+    #Loading the feaiures
+    i = 0
+    for o in list_files:
+      f = self.load_features_from_object(o)
+      features[i,:,:] = f
+      i = i + 1
+
+    return features
 
 
 

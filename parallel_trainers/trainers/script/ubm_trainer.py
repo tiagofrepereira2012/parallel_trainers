@@ -10,6 +10,7 @@ from .. import utils
 from mpi4py import MPI
 
 from parallel_trainers.trainers.utils.file_loader import FileLoader
+from ..mpi_trainers import *
 
 
 def main():
@@ -21,7 +22,6 @@ def main():
 
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-  parser.add_argument('-i', '--input-dir', metavar='DIR', type=str, dest='input_dir', default='', help='Base directory for the features.')
   parser.add_argument('-o', '--output-file', metavar='DIR', type=str, dest='output_file', default='UBM.hdf5', help='Output file.')
 
   parser.add_argument('-g', '--gaussians', type=int, dest='gaussians', default=16, help='Number of Gaussians.')
@@ -40,7 +40,6 @@ def main():
 
   args = parser.parse_args()
 
-  input_dir             = args.input_dir
   output_file           = args.output_file
   gaussians             = args.gaussians
   convergence_threshold = args.convergence_threshold
@@ -54,16 +53,12 @@ def main():
   #SETTING UP MPI
   ##############
   comm        = MPI.COMM_WORLD #Starting MPI
-  rank        = comm.Get_rank() #RANK i.e. How am I?
+  rank        = comm.Get_rank() #RANK i.e. Who am I?
   size        = comm.Get_size() #Number of parallel process for T-matrix calculation
 
   
-  #means        = None
-  #variances    = None
-  #weights      = None
   base_ubm     =  None
   partial_data = None
-  fresh_means  = None
 
   ####
   # Loading features
@@ -90,217 +85,41 @@ def main():
   ####
   # K-Means
   ###
-
   #Setting UP the initialization
   if(ubm_initialization != ""):
-    print("Load UBM from: " + ubm_initialization)
+    #print("Load UBM from: " + ubm_initialization)
     base_ubm = utils.load_gmm_from_file(ubm_initialization, gaussians, dim)
   else:
-    #if it was not, RUN the kmeans
-
-    e_kmeans_machine = bob.machine.KMeansMachine(gaussians,dim)
-
-    e_kmeans_trainer                       = bob.trainer.KMeansTrainer()
-    #e_kmeans_trainer.initialization_method = bob.trainer._trainer.initialization_method_type.RANDOM_NO_DUPLICATE
-    e_kmeans_trainer.initialize(e_kmeans_machine,partial_data)
-
-    if(rank==0):
-      print("Parallel Kmeans")
-      m_kmeans_machine = bob.machine.KMeansMachine(gaussians,dim)
-
-      m_kmeans_trainer = bob.trainer.KMeansTrainer()
-      #m_kmeans_trainer.initialization_method = bob.trainer._trainer.initialization_method_type.RANDOM_NO_DUPLICATE
-      m_kmeans_trainer.initialize(m_kmeans_machine, partial_data)
-
-    ####
-    # RUN K-means
-    ####
-    run = True #flag that controls the iterations of the algorithm
-    i = 0
-    average_likelihood_previous = float("inf")
-    while(run):
-      i = i + 1
-      if(i >= K_MEANS_MAX_ITERATIONS):
-        run  = False
-
-      if(rank==0):
-        print("KMeans - Iteration " + str(i))
-        print("  E Step")
 
 
-      ####
-      #K-means E Step
-      ####
-      e_kmeans_trainer.e_step(e_kmeans_machine,partial_data)
+    mpi_kmeans_trainer = MPIKmeansTrainer(comm, gaussians, dim)
+    mpi_kmeans_trainer.train(partial_data)
 
-      #Preparing the KMEANS Statistics for reduce
-      if(rank==0):
-        reduce_zeroeth_order_statistics = numpy.zeros(e_kmeans_trainer.zeroeth_order_statistics.shape, e_kmeans_trainer.zeroeth_order_statistics.dtype)
-        reduce_first_order_statistics   = numpy.zeros(e_kmeans_trainer.first_order_statistics.shape, e_kmeans_trainer.first_order_statistics.dtype)
-        reduce_average_min_distance    = numpy.zeros((1),dtype='float')
-      else:
-        reduce_zeroeth_order_statistics = None
-        reduce_first_order_statistics   = None
-        reduce_average_min_distance    = None
- 
+    if(rank == 0):
+      print("Waiting UBM trainer")
+      kmeans_machine = mpi_kmeans_trainer.get_machine()
 
-      #Summing up the K Means Statistics
-      comm.Reduce(numpy.array([e_kmeans_trainer.average_min_distance])     ,reduce_average_min_distance     , op=MPI.SUM, root=0)
-      comm.Reduce(e_kmeans_trainer.zeroeth_order_statistics                ,reduce_zeroeth_order_statistics , op=MPI.SUM, root=0)
-      comm.Reduce(e_kmeans_trainer.first_order_statistics                  ,reduce_first_order_statistics   , op=MPI.SUM, root=0)
- 
-
-      ########
-      #K Means M-Step
-      ########
-
-      if(rank==0): #m-step only in the rank 0   
-        print("  M Step")
-
-        # Creates the KMeansTrainer
-        m_kmeans_trainer.zeroeth_order_statistics = reduce_zeroeth_order_statistics
-        m_kmeans_trainer.first_order_statistics   = reduce_first_order_statistics
-        m_kmeans_trainer.average_min_distance     = reduce_average_min_distance[0]
-
-        m_kmeans_trainer.m_step(m_kmeans_machine, whole_data) #m-step
-
-        ###########
-        #testing convergence
-        ##########
-        average_likelihood = m_kmeans_trainer.average_min_distance
-        conv               = abs((average_likelihood_previous - average_likelihood)/average_likelihood_previous)
-        if(conv < K_MEANS_CONVERGENCE_THRESHOLD):
-          run = False
-        average_likelihood_previous = average_likelihood
-
-        fresh_means = m_kmeans_machine.means
-
-      #Broadcasting the new means and the stop condition
-      run                    = comm.bcast(run, root = 0)
-      e_kmeans_machine.means = comm.bcast(fresh_means,root=0)
-
-
-    ##Saving the startGMM   
-    if(rank==0):    
       base_ubm       = bob.machine.GMMMachine(gaussians, dim)
-      base_ubm.means       = m_kmeans_machine.means
-      [variances, weights] = m_kmeans_machine.get_variances_and_weights_for_each_cluster(whole_data)
+      base_ubm.means       = kmeans_machine.means
+      [variances, weights] = kmeans_machine.get_variances_and_weights_for_each_cluster(whole_data)
       base_ubm.variances   = variances
       base_ubm.weights     = weights
       utils.save_gmm(base_ubm, output_file)
 
-
-    print("Waiting UBM trainer")
     comm.Barrier() #Synchronization barrier in order to all process load the base_ubm
-    base_ubm = utils.load_gmm_from_file(output_file, gaussians, dim) #loading the kmeans UBM for each node
+    base_ubm = utils.load_gmm_from_file(output_file, gaussians, dim) #loading the kmeans UBM for each node 
 
 
+  if(rank == 0):
+    print("Training UBM")
 
-
-  #####################
-  # UBM Trainning
-  #####################
-  if(rank==0):
-    print("############################")
-    print("UBM - Training")
-    #Creating the M machine (the Machine that will run the m-step)
-    m_machine                 = bob.machine.GMMMachine(base_ubm)
-
-  #Creating the E machine (the Machine that will run the e step)
-  e_machine                 = bob.machine.GMMMachine(base_ubm)
-
-
-  ###################
-  ###### START
-  ###################
-  average_likelihood_previous = float("inf")
-
-  fresh_means = None  
-  run         = True #flaging the stop condition
-  i = 0
-  while(run):
-    i = i + 1
-    if(i >= iterations):
-      run  = False
-  
-    if(rank==0):
-      print("Iteration " + str(i))
-      print("  E Step")
-
-    ############
-    # E-STEP
-    ###########
-    trainer = bob.trainer.ML_GMMTrainer(update_means=True, update_variances=False, update_weights=False)
-    trainer.initialize(e_machine,partial_data)
-    trainer.e_step(e_machine,partial_data) #e-step
-    gmm_stats              = trainer.gmm_statistics #fetching each GMMStats
-
-    #Preparing the GMMStatistics for reduce
-    if(rank==0):
-
-      reduce_t              = numpy.zeros((1),dtype=int)
-      reduce_n              = numpy.zeros(shape=gmm_stats.n.shape, dtype=gmm_stats.n.dtype)
-      reduce_log_likelihood = numpy.zeros((1), dtype=float)
-      reduce_sum_px         = numpy.zeros(shape=gmm_stats.sum_px.shape, dtype=gmm_stats.sum_px.dtype)
-      reduce_sum_pxx        = numpy.zeros(shape=gmm_stats.sum_pxx.shape, dtype=gmm_stats.sum_pxx.dtype)
-
-    else:
-      reduce_t              = None
-      reduce_n              = None
-      reduce_log_likelihood = None
-      reduce_sum_px         = None
-      reduce_sum_pxx        = None
-
-
-    #Summing up the GMMStatistics
-    comm.Reduce(numpy.array([gmm_stats.t])           ,reduce_t              , op=MPI.SUM, root=0)
-    comm.Reduce(gmm_stats.n                          ,reduce_n              , op=MPI.SUM, root=0)
-    comm.Reduce(numpy.array(gmm_stats.log_likelihood), reduce_log_likelihood, op=MPI.SUM, root=0)
-    comm.Reduce(gmm_stats.sum_px                     ,reduce_sum_px         , op=MPI.SUM, root=0)
-    comm.Reduce(gmm_stats.sum_pxx                    ,reduce_sum_pxx        , op=MPI.SUM, root=0)
-
-
-    ########
-    # M-Step
-    ########
-   
-    if(rank==0): #m-step only in the rank 0   
-
-      print("  M Step")
-
-      #new statistiscs
-      sum_stats = bob.machine.GMMStats(gaussians, dim)
-      sum_stats.n                    = reduce_n
-      sum_stats.t                    = int(reduce_t[0])
-      sum_stats.log_likelihood       = reduce_log_likelihood[0]
-      sum_stats.sum_px               = reduce_sum_px
-      sum_stats.sum_pxx              = reduce_sum_pxx
-
-      #trainer for the m-step
-      m_trainer = bob.trainer.ML_GMMTrainer(update_means=True, update_variances=False, update_weights=False)
-      m_trainer.initialize(m_machine,whole_data)
-      m_trainer.gmm_statistics = sum_stats
-      m_trainer.m_step(m_machine,whole_data)
- 
-      ###########
-      #testing convergence
-      ##########
-      average_likelihood = utils.compute_likelihood(sum_stats)
-      conv               = abs((average_likelihood_previous - average_likelihood)/average_likelihood_previous)
-      if(conv < convergence_threshold):
-        run = False
-      average_likelihood_previous = average_likelihood
-     
-      fresh_means = m_machine.means #preparing for send the new means
-
-    #Broadcasting the new means and the stop condition
-    run           = comm.bcast(run, root = 0)
-    e_machine.means = comm.bcast(fresh_means,root=0)
-
+  mpi_ubm_trainer = MPIUBMTrainer(comm, base_ubm, iterations=iterations, convergence_threshold=convergence_threshold)
+  mpi_ubm_trainer.train(partial_data)
 
   if(rank==0):
     print("Saving GMM ...")
-    utils.save_gmm(m_machine, output_file)
+    machine = mpi_ubm_trainer.get_machine()
+    utils.save_gmm(machine, output_file)
     print("End!")
 
 
