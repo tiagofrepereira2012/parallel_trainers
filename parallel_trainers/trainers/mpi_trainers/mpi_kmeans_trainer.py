@@ -52,11 +52,21 @@ class MPIKmeansTrainer(MPIEMTrainer):
     data
       A small part of the whole data
     """
-        
+    random_means = None
+    if(self.rank == 0):
+      random_means = numpy.random.rand(self.n_means, self.dim)
+
+    random_means = self.communicator.bcast(random_means,root=0) #Broadcasting the random means
+
     #initializing the machines
+    #self.e_kmeans_trainer.rng = bob.core.random.mt19937(5489)
     self.e_kmeans_trainer.initialize(self.e_kmeans_machine,data)
+    #self.e_kmeans_trainer.initialization_method = 'RANDOM_NO_DUPLICATE'
+    self.e_kmeans_machine.means = random_means
     if (self.rank==0):
+      #self.m_kmeans_trainer.rng = bob.core.random.mt19937(5489)
       self.m_kmeans_trainer.initialize(self.m_kmeans_machine, data)
+      self.m_kmeans_machine.means = random_means
 
     run = True #flag that controls the iterations of the algorithm along different process
     i = 0
