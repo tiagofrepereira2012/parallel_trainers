@@ -25,6 +25,7 @@ setup(
         "setuptools",
         "bob >= 1.1.0",      # base signal proc./machine learning library
         "facereclib",
+        "mpi4py"
     ],
 
     namespace_packages = [
@@ -39,15 +40,28 @@ setup(
 
       # registered database short cuts
       'databases': [
-        'cpqd_smartphone_male    = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_male:database',
-        'cpqd_notebook_male      = parallel_trainers.trainers.configurations.databases.cpqd_notebook_male:database',
-        'cpqd_n2s_male           = parallel_trainers.trainers.configurations.databases.cpqd_n2s_male:database',
-        'cpqd_s2n_male           = parallel_trainers.trainers.configurations.databases.cpqd_s2n_male:database',
+        'arface                  =  parallel_trainers.trainers.configurations.databases.arface:database',
+        'atnt                    = parallel_trainers.trainers.configurations.databases.atnt:database',
+        'banca                   = parallel_trainers.trainers.configurations.databases.banca:database',
+        'caspeal                 = parallel_trainers.trainers.configurations.databases.caspeal:database',
+        'frgc                    = parallel_trainers.trainers.configurations.databases.frgc:database',
+        'gbu                     = parallel_trainers.trainers.configurations.databases.gbu:database',
+        'lfw                     = parallel_trainers.trainers.configurations.databases.lfw_unrestricted:database',
+        'mobio                   = parallel_trainers.trainers.configurations.databases.mobio:database',
+        'multipie                = parallel_trainers.trainers.configurations.databases.multipie:database',
+        'scface                  = parallel_trainers.trainers.configurations.databases.scface:database',
+        'xm2vts                  = parallel_trainers.trainers.configurations.databases.xm2vts:database',
 
-        'cpqd_notebook_female    = parallel_trainers.trainers.configurations.databases.cpqd_notebook_female:database',
-        'cpqd_smartphone_female  = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_female:database',
-        'cpqd_n2s_female         = parallel_trainers.trainers.configurations.databases.cpqd_n2s_female:database',
-        'cpqd_s2n_female         = parallel_trainers.trainers.configurations.databases.cpqd_s2n_female:database',
+
+        #'cpqd_smartphone_male    = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_male:database',
+        #'cpqd_notebook_male      = parallel_trainers.trainers.configurations.databases.cpqd_notebook_male:database',
+        #'cpqd_n2s_male           = parallel_trainers.trainers.configurations.databases.cpqd_n2s_male:database',
+        #'cpqd_s2n_male           = parallel_trainers.trainers.configurations.databases.cpqd_s2n_male:database',
+
+        #'cpqd_notebook_female    = parallel_trainers.trainers.configurations.databases.cpqd_notebook_female:database',
+        #'cpqd_smartphone_female  = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_female:database',
+        #'cpqd_n2s_female         = parallel_trainers.trainers.configurations.databases.cpqd_n2s_female:database',
+        #'cpqd_s2n_female         = parallel_trainers.trainers.configurations.databases.cpqd_s2n_female:database',
       ],
 
 

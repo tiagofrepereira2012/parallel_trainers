@@ -2,9 +2,44 @@
 Parallel trainers
 ===============================================================================
 
+This package trains a parallel version of the following models, using the python binds of MPI (mpi4py - https://pypi.python.org/pypi/mpi4py/), and the Trainers and Machines from Bob:
+ - Universal Background Model (UBM)
+ - The within client variation matrix (U Matrix) for the Intersession Variability Modeling (ISV)
 
 
-1. Bob as the core framework used to run the experiments::
+With these code you can split all the work in a grid system that have MPI available.
+
+
+If you use this package, please cite the following publications:
+
+1. The original paper for the UBM system::
+
+    @article{reynolds2000speaker,
+      title={Speaker verification using adapted Gaussian mixture models},
+      author={Reynolds, Douglas A and Quatieri, Thomas F and Dunn, Robert B},
+      journal={Digital signal processing},
+      volume={10},
+      number={1},
+      pages={19--41},
+      year={2000},
+      publisher={Elsevier}
+    }
+
+2. Paper describing the use of Session Variability Modelling for face authentication::
+
+    @article{mccool2013session,
+      title={Session variability modelling for face authentication},
+      author={McCool, Christopher and Wallace, Roy and McLaren, Mitchell and El Shafey, Laurent and Marcel, S{\'e}bastien},
+      journal={IET biometrics},
+      volume={2},
+      number={3},
+      pages={117--129},
+      year={2013},
+      publisher={IET}
+    }
+
+
+3. Bob as the core framework used to train the models::
 
     @inproceedings{Anjos_ACMMM_2012,
       author = {A. Anjos AND L. El Shafey AND R. Wallace AND M. G\"unther AND C. McCool AND S. Marcel},
@@ -19,40 +54,11 @@ Parallel trainers
 Installation
 ------------
 
-.. note:: 
-
-  If you are reading this page through our GitHub portal and not through PyPI,
-  note **the development tip of the package may not be stable** or become
-  unstable in a matter of moments.
-
-  Go to PYPI to download the latest
-  stable version of this package.
-
-
-Using an automatic installer
-============================
-
-Using ``pip`` is the easiest (shell commands are marked with a ``$`` signal)::
-
-  $ pip install 
-
-You can also do the same with ``easy_install``::
-
-  $ easy_install
-
-This will download and install this package plus any other required
-dependencies. It will also verify if the version of Bob you have installed
-is compatible.
-
-This scheme works well with virtual environments by `virtualenv
-<http://pypi.python.org/pypi/virtualenv>`_ or if you have root access to your
-machine. Otherwise, we recommend you use the next option.
-
 Using ``zc.buildout``
 =====================
 
-Download the latest version of this package from `PyPI
-<http://pypi.python.org/pypi/PACKAGE>`_ and unpack it in your
+Download the latest version of this package from `Github
+<https://github.com/tiagofrepereira2012/parallel_trainers>`_ and unpack it in your
 working area. The installation of the toolkit itself uses `buildout
 <http://www.buildout.org/>`_. You don't need to understand its inner workings
 to use this package. Here is a recipe to get you started::
@@ -87,11 +93,41 @@ get you a fully operational test and development environment.
 User Guide
 ----------
 
+Universal Background Training
+==============================
+
+Type the following command to see all the available options for the UBM trainer::
+
+   $ ./bin/ubm_trainer.py --help
+
+In order to run this script in the MPI environment run the following code::
+
+   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options>
+
+
+Within client variation matrix (U Matrix) for the ISV
+======================================================
+
+Type the following command to see all the available options for the UBM trainer::
+
+   $ ./bin/isv_U_trainer.py --help
+
+In order to run this script in the MPI environment run the following code::
+
+   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/isv_U_trainer.py <options>
+
+
+How to configure the MPI in my grid system?
+============================================
+
+You can see all the details of how to configure the MPI and how to setup the python bindings in the following page: `http://mpi4py.scipy.org/ <http://mpi4py.scipy.org/>`_.
+
+
 
 Problems
 --------
 
-In case of problems, please contact any of the authors of the paper.
+In case of problems, please contact any of the authors of the package.
 
 
 

@@ -37,7 +37,7 @@ def main():
 
   parser.add_argument('-e', '--relevance-factor', type=float, dest='relevance_factor', default=4, help='Relevance factor for the user offset')
 
-  parser.add_argument('-f', '--facereclib', action='store_true', dest='facereclib', default=False, help='Compatible with facereclib?')
+  parser.add_argument('-f', '--facereclib', action='store_true', dest='facereclib', default=False, help='Is the output compatible with with the IDIAP Facereclib?')
 
   args = parser.parse_args()
 
