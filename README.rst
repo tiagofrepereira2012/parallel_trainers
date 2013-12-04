@@ -1,13 +1,12 @@
 ===============================================================================
 Parallel trainers
 ===============================================================================
-
-This package trains a parallel version of the following models, using the python binds of MPI (mpi4py - https://pypi.python.org/pypi/mpi4py/), and the Trainers and Machines from Bob:
+This package trains a parallel version of the following models, using the python binds for MPI (mpi4py - https://pypi.python.org/pypi/mpi4py/), and the Trainers and Machines from Bob:
  - Universal Background Model (UBM)
  - The within client variation matrix (U Matrix) for the Intersession Variability Modeling (ISV)
 
 
-With these code you can split all the work in a grid system that have MPI available.
+With these codes you can split all the work in a grid system that has MPI available.
 
 
 If you use this package, please cite the following publications:
