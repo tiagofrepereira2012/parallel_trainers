@@ -36,7 +36,7 @@ def main():
 
   parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
-  parser.add_argument('-u', '--ubm-initialization-file', type=str, dest='ubm_initialization', default='', help='Use the paramenters of this UBM for initialization instead of use kmeans')
+  parser.add_argument('-u', '--ubm-initialization-file', type=str, dest='ubm_initialization', default='', help='Use the parameters of this UBM for initialization instead of use kmeans')
 
 
   args = parser.parse_args()
