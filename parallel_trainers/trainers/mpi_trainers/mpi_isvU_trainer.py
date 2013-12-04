@@ -9,11 +9,13 @@ from mpi_emtrainer import *
 from mpi4py import MPI
 from .. import utils
 
+import logging
+
 
 class MPIISVUTrainer(MPIEMTrainer):
 
 
-  def __init__(self, communicator, base_ubm, U_dimension=100, relevance_factor = 4, iterations=10, convergence_threshold = 0.0001):
+  def __init__(self, communicator, base_ubm, U_dimension=100, relevance_factor = 4, iterations=10):
     """
     Constructor
 
@@ -28,7 +30,7 @@ class MPIISVUTrainer(MPIEMTrainer):
     self.base_ubm              = base_ubm
     self.U_dimension           = U_dimension
     self.iterations            = iterations
-    self.convergence_threshold = convergence_threshold
+    #self.convergence_threshold = convergence_threshold
     self.relevance_factor      = relevance_factor
 
     #Creating the proper trainers and machines
@@ -67,8 +69,8 @@ class MPIISVUTrainer(MPIEMTrainer):
         run = False
 
       if(self.rank==0):
-        print("UBM - Iteration " + str(i))
-        print("  E Step")
+        logging.info("U - Iteration " + str(i))
+        logging.info("  E Step")
 
 
       ####
@@ -93,7 +95,7 @@ class MPIISVUTrainer(MPIEMTrainer):
       #M-Step (Only in the root node)
       ########
       if(self.rank==0): #m-step only in the rank 0   
-        print("  M Step")
+        logging.info("  M Step")
 
         #new statistiscs
         self.m_trainer.acc_u_a1 = reduce_u_a1
@@ -102,14 +104,7 @@ class MPIISVUTrainer(MPIEMTrainer):
         #trainer for the m-step
         self.m_trainer.m_step(self.m_machine,data)
 
-        ###########
-        #testing convergence
-        ##########
-        #average_likelihood = utils.compute_likelihood(sum_stats)
-        #conv               = abs((average_likelihood_previous - average_likelihood)/average_likelihood_previous)
-        #if(conv < convergence_threshold):
-          #run = False
-        #average_likelihood_previous = average_likelihood
+        #TODO: Testing the convergence
 
         fresh_U = self.m_machine.u #preparing for send the new means
 

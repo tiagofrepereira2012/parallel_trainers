@@ -11,12 +11,13 @@ from mpi4py import MPI
 
 from parallel_trainers.trainers.utils.file_loader import FileLoader
 from ..mpi_trainers import *
+import logging
 
 
 def main():
 
   DATABASES_RESOURCE_NAME       = "databases"
-  K_MEANS_MAX_ITERATIONS        = 50
+  K_MEANS_MAX_ITERATIONS        = 500
   K_MEANS_CONVERGENCE_THRESHOLD = 0.0001
 
 
@@ -33,7 +34,7 @@ def main():
   parser.add_argument('-d','--databases', nargs = '+', required = True,
         help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
 
-  parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', default=False, help='Increases this script verbosity')
+  parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
   parser.add_argument('-u', '--ubm-initialization-file', type=str, dest='ubm_initialization', default='', help='Use the paramenters of this UBM for initialization instead of use kmeans')
 
@@ -43,11 +44,11 @@ def main():
   output_file           = args.output_file
   gaussians             = args.gaussians
   convergence_threshold = args.convergence_threshold
-  verbose               = args.verbose
   databases             = args.databases
   ubm_initialization    = args.ubm_initialization
   iterations            = args.iterations
-  
+  verbose               = args.verbose
+
 
   ###############
   #SETTING UP MPI
@@ -56,7 +57,10 @@ def main():
   rank        = comm.Get_rank() #RANK i.e. Who am I?
   size        = comm.Get_size() #Number of parallel process for T-matrix calculation
 
-  
+  #Setting the log
+  logging.basicConfig(filename='mpi_ubm_trainer.log',level=verbose, format='%(levelname)s %(asctime)s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
+
+
   base_ubm     =  None
   partial_data = None
 
@@ -64,13 +68,11 @@ def main():
   # Loading features
   ####
   if(rank==0):
-    print("Loading features...")
+    logging.info("Loading features...")
     whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
-    #whole_data = whole_data[0:50000,:]
-    #whole_data = numpy.random.rand(50000, 44)
 
     #sending the proper data for each node
-    print("Transmitting proper data to each node...")
+    logging.info("Transmitting proper data to each node...")
     for i in range(1,size):
       partial_data = utils.select_data(whole_data, size, i)
       comm.send(partial_data,dest=i,tag=11)
@@ -87,7 +89,6 @@ def main():
   ###
   #Setting UP the initialization
   if(ubm_initialization != ""):
-    #print("Load UBM from: " + ubm_initialization)
     base_ubm = utils.load_gmm_from_file(ubm_initialization, gaussians, dim)
   else:
 
@@ -96,7 +97,7 @@ def main():
     mpi_kmeans_trainer.train(partial_data)
 
     if(rank == 0):
-      print("Waiting UBM trainer")
+      logging.info("Waiting UBM trainer")
       kmeans_machine = mpi_kmeans_trainer.get_machine()
 
       base_ubm       = bob.machine.GMMMachine(gaussians, dim)
@@ -111,16 +112,16 @@ def main():
 
 
   if(rank == 0):
-    print("Training UBM")
+    logging.info("Training UBM")
 
   mpi_ubm_trainer = MPIUBMTrainer(comm, base_ubm, iterations=iterations, convergence_threshold=convergence_threshold)
   mpi_ubm_trainer.train(partial_data)
 
   if(rank==0):
-    print("Saving GMM ...")
+    logging.info("Saving GMM ...")
     machine = mpi_ubm_trainer.get_machine()
     utils.save_gmm(machine, output_file)
-    print("End!")
+    logging.info("End!")
 
 
 

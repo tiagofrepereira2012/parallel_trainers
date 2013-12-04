@@ -7,7 +7,7 @@ import bob
 import numpy
 from mpi_emtrainer import *
 from mpi4py import MPI
-
+import logging
 
 
 class MPIKmeansTrainer(MPIEMTrainer):
@@ -59,9 +59,7 @@ class MPIKmeansTrainer(MPIEMTrainer):
     random_means = self.communicator.bcast(random_means,root=0) #Broadcasting the random means
 
     #initializing the machines
-    #self.e_kmeans_trainer.rng = bob.core.random.mt19937(5489)
     self.e_kmeans_trainer.initialize(self.e_kmeans_machine,data)
-    #self.e_kmeans_trainer.initialization_method = 'RANDOM_NO_DUPLICATE'
     self.e_kmeans_machine.means = random_means
     if (self.rank==0):
       #self.m_kmeans_trainer.rng = bob.core.random.mt19937(5489)
@@ -76,8 +74,8 @@ class MPIKmeansTrainer(MPIEMTrainer):
       i = i + 1
 
       if(self.rank==0):
-        print("KMeans - Iteration " + str(i))
-        print("  E Step")
+        logging.info("KMeans - Iteration " + str(i))
+        logging.info("  E Step")
 
 
       ####
@@ -105,7 +103,7 @@ class MPIKmeansTrainer(MPIEMTrainer):
       #M-Step (Only in the root node)
       ########
       if(self.rank==0): #m-step only in the rank 0   
-        print("  M Step")
+        logging.info("  M Step")
 
         # Creates the KMeansTrainer
         self.m_kmeans_trainer.zeroeth_order_statistics = reduce_zeroeth_order_statistics

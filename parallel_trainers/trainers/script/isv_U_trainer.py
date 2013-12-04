@@ -22,14 +22,12 @@ def main():
 
   parser.add_argument('-o', '--output-file', metavar='DIR', type=str, dest='output_file', default='ISV.hdf5', help='Output file.')
 
-  parser.add_argument('-t', '--convergence_threshold', type=float, dest='convergence_threshold', default=0.0001, help='Convergence threshold.')
-
   parser.add_argument('-r', '--iterations', type=int, dest='iterations', default=10, help='Number of iterations.')
 
   parser.add_argument('-d','--databases', nargs = '+', required = True,
         help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
 
-  parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', default=False, help='Increases this script verbosity')
+  parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
   parser.add_argument('-u', '--ubm', type=str, dest='ubm', default='', help='Use the paramenters of this UBM for initialization instead of use kmeans')
 
@@ -44,7 +42,6 @@ def main():
   args = parser.parse_args()
 
   output_file           = args.output_file
-  convergence_threshold = args.convergence_threshold
   verbose               = args.verbose
   databases             = args.databases
   ubm                   = args.ubm
@@ -55,6 +52,10 @@ def main():
   gaussians             = args.gaussians
   
 
+  #Setting the log
+  logging.basicConfig(filename='mpi_isvU_trainer.log',level=verbose, format='%(levelname)s %(asctime)s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
+
+
   ###############
   #SETTING UP MPI
   ##############
@@ -63,13 +64,11 @@ def main():
   size        = comm.Get_size() #Number of parallel process for T-matrix calculation
 
   if(rank==0):
-    print("Loading features...")
+    logging.info("Loading features...")
     whole_data   = numpy.array(utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME, arrange_by_client = True))
-    #whole_data = whole_data[0:50000,:]
-    #whole_data = numpy.array([numpy.random.rand(250, 44),numpy.random.rand(250, 44)])
 
     #sending the proper data for each node
-    print("Transmitting proper data to each node...")
+    logging.info("Transmitting proper data to each node...")
     for i in range(1,size):
       partial_data = utils.select_data(whole_data, size, i)
       comm.send(partial_data,dest=i,tag=11)
@@ -88,7 +87,7 @@ def main():
   #Computing the statistics per client
   gmm_stats = []
   if(rank==0):
-    print("Computing statistics")
+    logging.info("Computing statistics")
 
   client_stats = []
   i = 0
@@ -109,20 +108,20 @@ def main():
   ##############
 
   if(rank == 0):
-    print("Training ISV U")
+    logging.info("Training ISV U")
 
-  mpi_isvU_trainer = MPIISVUTrainer(comm, base_ubm, U_dimension = u_subspace, relevance_factor = relevance_factor, iterations=iterations, convergence_threshold=convergence_threshold)
+  mpi_isvU_trainer = MPIISVUTrainer(comm, base_ubm, U_dimension = u_subspace, relevance_factor = relevance_factor, iterations=iterations)
   mpi_isvU_trainer.train(client_stats)
 
   if(rank==0):
-    print("Saving isv_base ...")
+    logging.info("Saving isv_base ...")
     machine = mpi_isvU_trainer.get_machine()
     if(facereclib):
       utils.save_isvbase(machine, output_file, ubm=base_ubm)
     else:
       utils.save_isvbase(machine, output_file)
 
-    print("End!")
+    logging.info("End!")
 
 
 

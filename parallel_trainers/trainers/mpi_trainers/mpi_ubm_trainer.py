@@ -8,6 +8,7 @@ import numpy
 from mpi_emtrainer import *
 from mpi4py import MPI
 from .. import utils
+import logging
 
 
 class MPIUBMTrainer(MPIEMTrainer):
@@ -28,6 +29,7 @@ class MPIUBMTrainer(MPIEMTrainer):
     self.base_ubm            = base_ubm
     self.iterations            = iterations
     self.convergence_threshold = convergence_threshold
+
 
 
     #Creating the proper trainers and machines
@@ -65,8 +67,8 @@ class MPIUBMTrainer(MPIEMTrainer):
       i = i + 1
 
       if(self.rank==0):
-        print("UBM - Iteration " + str(i))
-        print("  E Step")
+        logging.info("UBM - Iteration " + str(i))
+        logging.info("  E Step")
 
 
       ####
@@ -101,7 +103,7 @@ class MPIUBMTrainer(MPIEMTrainer):
       #M-Step (Only in the root node)
       ########
       if(self.rank==0): #m-step only in the rank 0   
-        print("  M Step")
+        logging.info("  M Step")
 
         #new statistiscs
         sum_stats = bob.machine.GMMStats(self.base_ubm.dim_c, self.base_ubm.dim_d)
