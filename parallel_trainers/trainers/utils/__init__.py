@@ -82,6 +82,17 @@ def load_features_from_resources(database_list, database_resource_name, arrange_
 
 
 
+def load_features_from_file(file_name,dim):
+  """
+  Load a set of features from a file list
+  """
+
+  whole_data = None
+
+  file_loader = FileLoader(file_name, from_database=False, dim=dim)
+  whole_data = file_loader()
+
+  return whole_data
 
 def compute_likelihood(gmm_stats):
   return gmm_stats.log_likelihood / gmm_stats.t;

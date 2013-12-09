@@ -31,12 +31,25 @@ def main():
 
   parser.add_argument('-r', '--iterations', type=int, dest='iterations', default=10, help='Number of iterations.')
 
-  parser.add_argument('-d','--databases', nargs = '+', required = True,
-        help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
+  #parser.add_argument('-d','--databases', nargs = '+', required = True,
+        #help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
 
   parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
   parser.add_argument('-u', '--ubm-initialization-file', type=str, dest='ubm_initialization', default='', help='Use the parameters of this UBM for initialization instead of use kmeans')
+
+  #create a subparser
+  subparsers = parser.add_subparsers(help='Input type: Database querying or list file')
+
+
+  #Database
+  parser_database = subparsers.add_parser('database', help='Querying parameters using the database plugins')
+  parser_database.add_argument('-d','--database_names', dest='databases', nargs = '+', required = True, help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
+
+  #List files
+  parser_files = subparsers.add_parser('list', help='Querying the parameters using a file list')
+  parser_files.add_argument('-f','--file_name',dest='file_name', type=str, required=True, help = 'List of parameters (Separated by line)')
+  parser_files.add_argument('-d','--dimensionality',dest='dim', type=str, required=True, help = 'Dimensionality of the feature vector')
 
 
   args = parser.parse_args()
@@ -44,11 +57,21 @@ def main():
   output_file           = args.output_file
   gaussians             = args.gaussians
   convergence_threshold = args.convergence_threshold
-  databases             = args.databases
   ubm_initialization    = args.ubm_initialization
   iterations            = args.iterations
   verbose               = args.verbose
 
+  databases = None
+  file_name = None
+
+  dict_args = vars(args)
+  for k in dict_args.keys():
+    if(k=="databases"):
+      databases = args.databases
+    elif(k=="file_name"):
+      file_name = args.file_name
+      dim       = args.dim
+    
 
   ###############
   #SETTING UP MPI
@@ -69,7 +92,11 @@ def main():
   ####
   if(rank==0):
     logging.info("Loading features...")
-    whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
+
+    if(databases!=None):
+      whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
+    else: #Must have a file name
+      whole_data = utils.load_features_from_file(file_name, dim)
 
     #sending the proper data for each node
     logging.info("Transmitting proper data to each node...")
