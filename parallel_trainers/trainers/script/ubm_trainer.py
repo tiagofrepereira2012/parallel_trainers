@@ -49,7 +49,7 @@ def main():
   #List files
   parser_files = subparsers.add_parser('list', help='Querying the parameters using a file list')
   parser_files.add_argument('-f','--file_name',dest='file_name', type=str, required=True, help = 'List of parameters (Separated by line)')
-  parser_files.add_argument('-d','--dimensionality',dest='dim', type=str, required=True, help = 'Dimensionality of the feature vector')
+  parser_files.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
 
 
   args = parser.parse_args()

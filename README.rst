@@ -103,6 +103,16 @@ In order to run this script in the MPI environment run the following code::
 
    $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options>
 
+It is possible to use an xbob.db package as input or a file containing the list of features to train. To use a database, run the following code ::
+
+   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options> database -d <database_name>
+
+To use a regular file list, run the following code ::
+   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options> list -f <file_name>
+
+
+
+
 
 Within client variation matrix (U Matrix) for the ISV
 ======================================================
