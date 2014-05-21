@@ -31,12 +31,11 @@ def main():
 
   parser.add_argument('-r', '--iterations', type=int, dest='iterations', default=10, help='Number of iterations.')
 
-  #parser.add_argument('-d','--databases', nargs = '+', required = True,
-        #help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
-
   parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
   parser.add_argument('-u', '--ubm-initialization-file', type=str, dest='ubm_initialization', default='', help='Use the parameters of this UBM for initialization instead of use kmeans')
+
+  parser.add_argument('-i','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
 
   #create a subparser
   subparsers = parser.add_subparsers(help='Input type: Database querying or list file')
@@ -49,7 +48,7 @@ def main():
   #List files
   parser_files = subparsers.add_parser('list', help='Querying the parameters using a file list')
   parser_files.add_argument('-f','--file_name',dest='file_name', type=str, required=True, help = 'List of parameters (Separated by line)')
-  parser_files.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
+  #parser_files.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
 
 
   args = parser.parse_args()
@@ -60,6 +59,7 @@ def main():
   ubm_initialization    = args.ubm_initialization
   iterations            = args.iterations
   verbose               = args.verbose
+  dim                   = args.dim
 
   databases = None
   file_name = None
@@ -70,7 +70,7 @@ def main():
       databases = args.databases
     elif(k=="file_name"):
       file_name = args.file_name
-      dim       = args.dim
+      #dim       = args.dim
     
 
   ###############
@@ -83,7 +83,6 @@ def main():
   #Setting the log
   logging.basicConfig(filename='mpi_ubm_trainer.log',level=verbose, format='%(levelname)s %(asctime)s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
 
-
   base_ubm     =  None
   partial_data = None
 
@@ -93,24 +92,32 @@ def main():
   if(rank==0):
     logging.info("Loading features...")
 
-    if(databases!=None):
-      whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
-    else: #Must have a file name
-      whole_data = utils.load_features_from_file(file_name, dim)
+
+  if(databases==None):
+    files        = open(file_name).readlines()
+    subset_files = utils.split_files(files,rank,size)
+
+    #Loading the partial data for each node
+    partial_data = utils.load_features_from_list(subset_files, dim)    
+
+
+    #if(databases!=None):
+      #whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
+    #else: #Must have a file name
+      #whole_data = utils.load_features_from_file(file_name, dim)
 
     #sending the proper data for each node
-    logging.info("Transmitting proper data to each node...")
-    for i in range(1,size):
-      partial_data = utils.select_data(whole_data, size, i)
-      comm.send(partial_data,dest=i,tag=11)
-    partial_data = utils.select_data(whole_data, size, 0)#data for the rank 0
+    #logging.info("Transmitting proper data to each node...")
+    #for i in range(1,size):
+      #partial_data = utils.select_data(whole_data, size, i)
+      #comm.send(partial_data,dest=i,tag=11)
+    #partial_data = utils.select_data(whole_data, size, 0)#data for the rank 0
 
-  else: #if rank!=0
+  #else: #if rank!=0
     #receiving the data for each node
-    partial_data = comm.recv(source=0,tag=11)
-    
+    #partial_data = comm.recv(source=0,tag=11)    
+  #dim = partial_data.shape[1] #Fetching the feature dimensionality
 
-  dim = partial_data.shape[1] #Fetching the feature dimensionality
   ####
   # K-Means
   ###
@@ -119,27 +126,16 @@ def main():
     base_ubm = utils.load_gmm_from_file(ubm_initialization, gaussians, dim)
   else:
 
-
     mpi_kmeans_trainer = MPIKmeansTrainer(comm, gaussians, dim)
     mpi_kmeans_trainer.train(partial_data)
+    weights,variances = mpi_kmeans_trainer.compute_variances_weights(partial_data)
 
-    if(rank == 0):
-      logging.info("Waiting UBM trainer")
-      kmeans_machine = mpi_kmeans_trainer.get_machine()
+    #Creating the UBM
+    base_ubm             = bob.machine.GMMMachine(gaussians, dim)
+    base_ubm.means       = mpi_kmeans_trainer.get_machine().means
+    base_ubm.variances   = variances
+    base_ubm.weights     = weights
 
-      base_ubm       = bob.machine.GMMMachine(gaussians, dim)
-      base_ubm.means       = kmeans_machine.means
-      [variances, weights] = kmeans_machine.get_variances_and_weights_for_each_cluster(whole_data)
-      base_ubm.variances   = variances
-      base_ubm.weights     = weights
-      utils.save_gmm(base_ubm, output_file)
-
-    comm.Barrier() #Synchronization barrier in order to all process load the base_ubm
-    base_ubm = utils.load_gmm_from_file(output_file, gaussians, dim) #loading the kmeans UBM for each node 
-
-
-  if(rank == 0):
-    logging.info("Training UBM")
 
   mpi_ubm_trainer = MPIUBMTrainer(comm, base_ubm, iterations=iterations, convergence_threshold=convergence_threshold)
   mpi_ubm_trainer.train(partial_data)
