@@ -170,22 +170,17 @@ class MPIKmeansTrainer(MPIEMTrainer):
 
     #Only the rank 0 knows the result of the sum above.
     if(self.rank == 0):
+      reduced_cache_means /= reduced_weights.transpose()
 
-      #print(variances)
-      #exit()
+      reduced_variances /= reduced_weights.transpose()
+      reduced_variances -= numpy.power(reduced_cache_means,2)
 
-      cache_means /= weights.transpose()
+      reduced_weights /= numpy.sum(reduced_weights)
 
-      variances /= weights.transpose()
-      variances -= numpy.power(cache_means,2)
 
-      weights /= numpy.sum(weights)
-      #print(variances)
-      #exit()
-
-      
-    weights   = self.communicator.bcast(weights, root=0)
-    variances = self.communicator.bcast(variances, root=0)   
+    #Broadcasting the statiscs      
+    weights   = self.communicator.bcast(reduced_weights, root=0)
+    variances = self.communicator.bcast(reduced_variances, root=0)   
    
     return weights[0,:], variances
 

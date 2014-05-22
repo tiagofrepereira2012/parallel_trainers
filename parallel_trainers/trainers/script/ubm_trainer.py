@@ -35,7 +35,7 @@ def main():
 
   parser.add_argument('-u', '--ubm-initialization-file', type=str, dest='ubm_initialization', default='', help='Use the parameters of this UBM for initialization instead of use kmeans')
 
-  parser.add_argument('-i','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
+  parser.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
 
   #create a subparser
   subparsers = parser.add_subparsers(help='Input type: Database querying or list file')
@@ -98,7 +98,7 @@ def main():
     subset_files = utils.split_files(files,rank,size)
 
     #Loading the partial data for each node
-    partial_data = utils.load_features_from_list(subset_files, dim)    
+    partial_data = utils.load_features_from_list(subset_files, dim) 
 
 
     #if(databases!=None):
