@@ -149,9 +149,8 @@ class MPIKmeansTrainer(MPIEMTrainer):
     for d in data:
       i = self.e_kmeans_machine.get_closest_mean(d)[0]
       weights[0,i] += 1
-      cache_means += d
-      variances += numpy.power(d,2)
-
+      cache_means[i,:] += d 
+      variances[i,:] += numpy.power(d,2)
 
     #Preparing the for reduce the statistics
     if(self.rank==0):

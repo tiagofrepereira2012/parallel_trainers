@@ -70,7 +70,6 @@ def main():
       databases = args.databases
     elif(k=="file_name"):
       file_name = args.file_name
-      #dim       = args.dim
     
 
   ###############
@@ -92,31 +91,14 @@ def main():
   if(rank==0):
     logging.info("Loading features...")
 
-
   if(databases==None):
     files        = open(file_name).readlines()
-    subset_files = utils.split_files(files,rank,size)
-
-    #Loading the partial data for each node
-    partial_data = utils.load_features_from_list(subset_files, dim) 
-
-
-    #if(databases!=None):
-      #whole_data = utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME)
-    #else: #Must have a file name
-      #whole_data = utils.load_features_from_file(file_name, dim)
-
-    #sending the proper data for each node
-    #logging.info("Transmitting proper data to each node...")
-    #for i in range(1,size):
-      #partial_data = utils.select_data(whole_data, size, i)
-      #comm.send(partial_data,dest=i,tag=11)
-    #partial_data = utils.select_data(whole_data, size, 0)#data for the rank 0
-
-  #else: #if rank!=0
-    #receiving the data for each node
-    #partial_data = comm.recv(source=0,tag=11)    
-  #dim = partial_data.shape[1] #Fetching the feature dimensionality
+  else:
+    files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME)
+ 
+  subset_files = utils.split_files(files,rank,size)
+  #Loading the partial data for each node
+  partial_data = utils.load_features_from_list(subset_files, dim)
 
   ####
   # K-Means

@@ -40,22 +40,28 @@ class FileLoader:
       self.arrange_by_client = arrange_by_client
 
     else:
+
+      if(type(database) == list):
+        self.list = database
+        self.file_format = file_format
+        self.arrange_by_client = arrange_by_client
+
+      else:
  
-      f = open(database, "r")
-      lines = f.readlines()
-      f.close()
+        f = open(database, "r")
+        lines = f.readlines()
+        f.close()
 
-      i = 0
-      for l in lines:
-        l=l.rstrip("\n")
-        lines[i] =l
-        i = i + 1
-
-      self.list              = list(lines)
-      self.arrange_by_client = False
+        i = 0
+        for l in lines:
+          l=l.rstrip("\n")
+          lines[i] =l
+          i = i + 1
+ 
+        self.list              = list(lines)
+        self.arrange_by_client = False
 
     self.dim = dim
-
 
 
   def __call__(self):
@@ -95,15 +101,14 @@ class FileLoader:
 
   def _load_features_from_list_per_user(self, list_files):
     #Counting for pre-allocation
-    dim     = 0
-   
+ 
     if(len(list_files) > 0):
       size,self.dim = self.get_shape(list_files[0])
     else:
       raise ValueError("Empty list!!")
 
     #pre-allocating
-    features = numpy.zeros(shape=(len(list_files),size,dim), dtype='float')
+    features = numpy.zeros(shape=(len(list_files),size,self.dim), dtype='float')
 
     #Loading the feaiures
     i = 0
