@@ -31,15 +31,12 @@ def split_files(files,rank,number_process):
 
 
 
-def load_gmm_from_file(file_name, gaussians, dim):
+def load_gmm_from_file(file_name):
   """
   Load a GMM from file
   """
-
   hdf5file  = bob.io.HDF5File(file_name,openmode_string='r')
-  gmm = bob.machine.GMMMachine(gaussians,dim)
-  bob.machine.GMMMachine.load(gmm,hdf5file)
-
+  gmm = bob.machine.GMMMachine(hdf5file)
   return gmm
 
 def save_gmm(gmm, file_name):
