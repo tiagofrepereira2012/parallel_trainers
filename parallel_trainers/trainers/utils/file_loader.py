@@ -13,72 +13,41 @@ import array
 class FileLoader:
   """This class load features files from different formats"""
 
-  def __init__(self,database, from_database=True, file_format="", dim=0, arrange_by_client = False):
-
-
-    if(from_database):
-      from facereclib.toolchain import FileSelector
-
-      fs = FileSelector(
-          database,
-          "",
-          "",
-          database.original_directory,
-          "",
-          "",
-          "",
-          "",
-          "",
-          zt_score_directories = None,
-          default_extension = '.hdf5'
-      )
-
-      directory_type = "features"
-
-      self.list = fs.training_list(directory_type,"train_extractor", arrange_by_client = arrange_by_client)   
-      self.file_format = file_format
-      self.arrange_by_client = arrange_by_client
-
-    else:
-
-      if(type(database) == list):
-        self.list = database
-        self.file_format = file_format
-        self.arrange_by_client = arrange_by_client
-
-      else:
- 
-        f = open(database, "r")
-        lines = f.readlines()
-        f.close()
-
-        i = 0
-        for l in lines:
-          l=l.rstrip("\n")
-          lines[i] =l
-          i = i + 1
- 
-        self.list              = list(lines)
-        self.arrange_by_client = False
-
+  def __init__(self, dim=40):
     self.dim = dim
 
+  def load_lists_from_database(self, database, arrange_by_client=False):
 
-  def __call__(self):
-    """
-    Keyword Parameters:
-    """ 
-    if(self.arrange_by_client):
-      features = []
-      for f in self.list:
-        features.append(self._load_features_from_list_per_user(f))
-      return features
-    else:
-      return self._load_features_from_list(self.list)
+    from facereclib.toolchain import FileSelector
+    fs = FileSelector(
+        database,
+        "",
+        "",
+        database.original_directory,
+        "",
+        "",
+        "",
+        "",
+        "",
+        zt_score_directories = None,
+        default_extension = '.hdf5'
+    )
+
+    directory_type = "features"
+    file_list      = fs.training_list(directory_type,"train_extractor", arrange_by_client = arrange_by_client)
+    return file_list
+
+    #if(arrange_by_client):
+      #features = []
+      #for f in file_list:
+        #features.append(self.load_features_from_list_per_user(f))
+      #return features
+    #else:
+      #return self._load_features_from_list(file_list)
 
 
 
-  def _load_features_from_list(self, list_files):
+  def load_features_from_list(self, list_files):
     #Counting for pre-allocation
     dim     = 0
     counter = 0
@@ -92,14 +61,14 @@ class FileLoader:
     #Loading the feaiures
     i = 0
     for o in list_files:
-      f = self.load_features_from_object(o)
+      f = self.load_features_from_file(o)
       s = f.shape[0]
       features[i:i+s,:] = f
       i = i + s
     return features
 
 
-  def _load_features_from_list_per_user(self, list_files):
+  def load_features_from_list_per_user(self, list_files):
     #Counting for pre-allocation
  
     if(len(list_files) > 0):
@@ -113,7 +82,7 @@ class FileLoader:
     #Loading the feaiures
     i = 0
     for o in list_files:
-      f = self.load_features_from_object(o)
+      f = self.load_features_from_file(o)
       features[i,:,:] = f
       i = i + 1
 
@@ -129,27 +98,24 @@ class FileLoader:
       o
         File object
     """
-    f = self.load_features_from_object(o)
+    f = self.load_features_from_file(o)
     return f.shape
 
 
 
-  def load_features_from_object(self,o):
+  def load_features_from_file(self, file_name):
     """
     Load a feature file
 
-    Keyword Parameters:i
-      o
-        File object
-   
+    Keyword Parameters:
+      file_name
+        File name
     """    
-
-    full_filename = o
-
-    if(full_filename[len(full_filename)-4:len(full_filename)] == "hdf5"):
-      return bob.io.load(full_filename)
+    if(file_name[len(file_name)-4:len(file_name)] == "hdf5"):
+      return bob.io.load(file_name)
     else:
-      return self.__paramread(full_filename)
+      return self.__paramread(file_name)
+
 
 
   def __paramread(self,arquivo):

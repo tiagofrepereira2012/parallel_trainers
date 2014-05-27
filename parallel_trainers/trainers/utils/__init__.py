@@ -7,6 +7,27 @@ import file_loader
 import numpy
 import bob
 from file_loader import FileLoader
+import os
+
+
+def split_files(files,rank,number_process):
+  """This is the call function that you have to overwrite in the derived class.
+
+    This method will split a list into different process
+  """
+  file_indexes = numpy.array(range(len(files)))
+  files = numpy.array(files)
+
+  #Selecting the indexes for each rank
+  mod = file_indexes % number_process
+  selected_indexes = list(numpy.where(mod==rank)[0])
+
+  files = list(files[selected_indexes])
+  if(type(files[0]) == str):
+    for i in range(len(files)):
+      files[i] = files[i].rstrip("\n")
+
+  return files
 
 
 
@@ -64,35 +85,25 @@ def select_data(data, number_process, rank):
 
 
 
-
-
-def load_features_from_resources(database_list, database_resource_name, arrange_by_client=False):
-  """
-  Load a set of features from a database resource
-
-  TODO: Concatenate numpy arrays
-  """
-  whole_data = None
+def load_list_from_resources(database_list, database_resource_name, file_loader, arrange_by_client=False):
+  files = []
   for d in database_list:
     db = resources.load_resource(database_resource_name, d)
-    file_loader = FileLoader(db, arrange_by_client=arrange_by_client)
-    whole_data = file_loader()
-  
-  return whole_data
+    files.append(file_loader.load_lists_from_database(db, arrange_by_client))
+  files = sum(files,[])
+  return files
 
 
 
-def load_features_from_file(file_name,dim):
-  """
-  Load a set of features from a file list
-  """
-
-  whole_data = None
-
-  file_loader = FileLoader(file_name, from_database=False, dim=dim)
-  whole_data = file_loader()
+def load_features_from_dir(directory, file_loader):
+  files = os.listdir(directory)
+  list_files = []
+  for f in files:
+    list_files.append(os.path.join(directory,f))
+  whole_data = file_loader.load_features_from_list(list_files)
 
   return whole_data
+
 
 def compute_likelihood(gmm_stats):
   return gmm_stats.log_likelihood / gmm_stats.t;

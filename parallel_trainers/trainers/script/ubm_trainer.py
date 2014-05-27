@@ -48,7 +48,6 @@ def main():
   #List files
   parser_files = subparsers.add_parser('list', help='Querying the parameters using a file list')
   parser_files.add_argument('-f','--file_name',dest='file_name', type=str, required=True, help = 'List of parameters (Separated by line)')
-  #parser_files.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
 
 
   args = parser.parse_args()
@@ -91,14 +90,18 @@ def main():
   if(rank==0):
     logging.info("Loading features...")
 
+  file_loader = FileLoader(dim=dim)
   if(databases==None):
     files        = open(file_name).readlines()
+    for i in range(len(files)):
+      files[i] = files[i].rstrip("\n")
   else:
-    files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME)
+    files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME, file_loader, arrange_by_client=False)
+    #files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME)
  
   subset_files = utils.split_files(files,rank,size)
   #Loading the partial data for each node
-  partial_data = utils.load_features_from_list(subset_files, dim)
+  partial_data = file_loader.load_features_from_list(subset_files)
 
   ####
   # K-Means

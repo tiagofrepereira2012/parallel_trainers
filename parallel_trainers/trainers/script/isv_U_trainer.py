@@ -11,6 +11,7 @@ from mpi4py import MPI
 
 from parallel_trainers.trainers.utils.file_loader import FileLoader
 from ..mpi_trainers import *
+import os
 
 
 
@@ -24,9 +25,6 @@ def main():
 
   parser.add_argument('-r', '--iterations', type=int, dest='iterations', default=10, help='Number of iterations.')
 
-  parser.add_argument('-d','--databases', nargs = '+', required = True,
-        help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
-
   parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
   parser.add_argument('-u', '--ubm', type=str, dest='ubm', default='', help='Use the paramenters of this UBM for initialization instead of use kmeans')
@@ -39,18 +37,44 @@ def main():
 
   parser.add_argument('-f', '--facereclib', action='store_true', dest='facereclib', default=False, help='Is the output compatible with with the IDIAP Facereclib?')
 
+  parser.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
+
+  #create a subparser
+  subparsers = parser.add_subparsers(help='Input type: Database querying or list file')
+
+  #Database
+  parser_database = subparsers.add_parser('database', help='Querying parameters using the database plugins')
+  parser_database.add_argument('-d','--database_names', dest='databases', nargs = '+', required = True, help = 'Database and the protocol; registered databases are: %s'%utils.resources.get_available_resources(DATABASES_RESOURCE_NAME))
+
+  #List files
+  parser_files = subparsers.add_parser('list', help='Querying the parameters using a file list')
+  parser_files.add_argument('-f','--file_name',dest='file_name', type=str, required=True, help = 'List of parameters (Separated by line)')
+
   args = parser.parse_args()
 
   output_file           = args.output_file
   verbose               = args.verbose
-  databases             = args.databases
   ubm                   = args.ubm
   iterations            = args.iterations
   u_subspace            = args.u_subspace
   relevance_factor      = args.relevance_factor
   facereclib            = args.facereclib
   gaussians             = args.gaussians
+  dim                   = args.dim 
   
+
+  databases = None
+  file_name = None
+  base_ubm  = utils.load_gmm_from_file(ubm, gaussians, dim)
+
+
+  dict_args = vars(args)
+  for k in dict_args.keys():
+    if(k=="databases"):
+      databases = args.databases
+    elif(k=="file_name"):
+      file_name = args.file_name
+
 
   #Setting the log
   logging.basicConfig(filename='mpi_isvU_trainer.log',level=verbose, format='%(levelname)s %(asctime)s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
@@ -63,26 +87,18 @@ def main():
   rank        = comm.Get_rank() #RANK i.e. Who am I?
   size        = comm.Get_size() #Number of parallel process for T-matrix calculation
 
-  if(rank==0):
-    logging.info("Loading features...")
-    whole_data   = numpy.array(utils.load_features_from_resources(databases, DATABASES_RESOURCE_NAME, arrange_by_client = True))
 
-    #sending the proper data for each node
-    logging.info("Transmitting proper data to each node...")
-    for i in range(1,size):
-      partial_data = utils.select_data(whole_data, size, i)
-      comm.send(partial_data,dest=i,tag=11)
+  file_loader = FileLoader(dim=dim)
 
-    partial_data = utils.select_data(whole_data, size, 0)#data for the rank 0
+  #Load a database or a file dir
+  if(databases!=None):
+    files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME, file_loader, arrange_by_client=True)
+  else:
+    files = os.listdir(file_name)
+    for i in range(len(files)):
+      files[i] = os.path.join(file_name, files[i])
 
-  else: #if rank!=0
-    #receiving the data for each node
-    partial_data = comm.recv(source=0,tag=11)
-
-
-  dim          = partial_data[0].shape[2]
-  base_ubm     = utils.load_gmm_from_file(ubm, gaussians, dim)
-
+  subset_files = utils.split_files(files,rank,size)
 
   #Computing the statistics per client
   gmm_stats = []
@@ -90,17 +106,23 @@ def main():
     logging.info("Computing statistics")
 
   client_stats = []
-  i = 0
-  for client_data in partial_data:
-    i = i + 1
+  for client_files in subset_files: #for each user, accumulate a list of statistics of this user
+    
+    stats = []
+    #If was not a database resource we must execute a listdir
+    if(databases == None):
+      listdir = os.listdir(client_files)
+      for i in range(len(listdir)):
+        listdir[i] = os.path.join(client_files,listdir[i])
+      client_files = listdir
 
-    feature_stats = []   
-    for feature in client_data:
+    for f in client_files: #for each user file, acc statistics
+      features = file_loader.load_features_from_file(f)      
       stats_client = bob.machine.GMMStats(gaussians,dim)
-      base_ubm.acc_statistics(feature,stats_client)
-      feature_stats.append(stats_client)
+      base_ubm.acc_statistics(features,stats_client)
+      stats.append(stats_client)
 
-    client_stats.append(feature_stats)
+    client_stats.append(stats)
 
 
   #################
