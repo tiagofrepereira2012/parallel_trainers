@@ -54,10 +54,11 @@ setup(
         'xm2vts                  = parallel_trainers.trainers.configurations.databases.xm2vts:database',
 
 
-        'cpqd_smartphone_male    = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_male:database',
-        'cpqd_notebook_male      = parallel_trainers.trainers.configurations.databases.cpqd_notebook_male:database',
-        'cpqd_n2s_male           = parallel_trainers.trainers.configurations.databases.cpqd_n2s_male:database',
-        'cpqd_s2n_male           = parallel_trainers.trainers.configurations.databases.cpqd_s2n_male:database',
+        'cpqd_smartphone_male     = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_male:database',
+        'cpqd_notebook_male       = parallel_trainers.trainers.configurations.databases.cpqd_notebook_male:database',
+        'cpqd_n2s_male            = parallel_trainers.trainers.configurations.databases.cpqd_n2s_male:database',
+        'cpqd_s2n_male            = parallel_trainers.trainers.configurations.databases.cpqd_s2n_male:database',
+        'cpqd_notebook_short_male = parallel_trainers.trainers.configurations.databases.cpqd_notebook_short_male:database',
 
         'cpqd_notebook_female    = parallel_trainers.trainers.configurations.databases.cpqd_notebook_female:database',
         'cpqd_smartphone_female  = parallel_trainers.trainers.configurations.databases.cpqd_smartphone_female:database',
