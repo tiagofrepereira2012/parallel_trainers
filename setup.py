@@ -34,9 +34,12 @@ setup(
 
     entry_points={
       'console_scripts': [
-        'ubm_trainer.py        = parallel_trainers.trainers.script.ubm_trainer:main',
-        'isv_U_trainer.py      = parallel_trainers.trainers.script.isv_U_trainer:main',
-        'ivector_TV_trainer.py = parallel_trainers.trainers.script.ivector_TV_trainer:main'
+        'ubm_trainer.py           = parallel_trainers.trainers.script.ubm_trainer:main',
+        'isv_U_trainer.py         = parallel_trainers.trainers.script.isv_U_trainer:main',
+        'ivector_TV_trainer.py    = parallel_trainers.trainers.script.ivector_TV_trainer:main',
+
+        'generate_ivectors.py     = parallel_trainers.trainers.script.generate_ivectors:main',
+        'train_linear_machines.py = parallel_trainers.trainers.script.train_linear_machines:main'
       ],
 
       # registered database short cuts

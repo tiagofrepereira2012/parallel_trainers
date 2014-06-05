@@ -10,6 +10,20 @@ from file_loader import FileLoader
 import os
 
 
+def ensure_dir(dirname):
+  """ Creates the directory dirname if it does not already exist,
+      taking into account concurrent 'creation' on the grid.
+      An exception is thrown if a file (rather than a directory) already 
+      exists. """
+  try:
+    # Tries to create the directory
+    os.makedirs(dirname)
+  except OSError:
+    # Check that the directory exists
+    if os.path.isdir(dirname): pass
+    else: raise
+
+
 def split_files(files,rank,number_process):
   """This is the call function that you have to overwrite in the derived class.
 

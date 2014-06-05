@@ -95,7 +95,9 @@ def main():
 
     gmm_stats = bob.machine.GMMStats(bob.io.HDF5File(i_file))
     ivector   = ivector_machine.forward(gmm_stats)
-    bob.io.save(ivector, o_file)
+    hdf5file = bob.io.HDF5File(o_file, 'w')
+    hdf5file.set('ivec', ivector)
+    del hdf5file
 
   if(rank==0):
     logging.info("End!!!")
