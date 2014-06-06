@@ -4,6 +4,9 @@ Parallel trainers
 This package trains a parallel version of the following models, using the python binds for MPI (mpi4py - https://pypi.python.org/pypi/mpi4py/), and the Trainers and Machines from Bob:
  - Universal Background Model (UBM)
  - The within client variation matrix (U Matrix) for the Intersession Variability Modeling (ISV)
+ - Total Variability Matrix (T Matrix)
+ - Train Linear Projectors for iVectors (Whitening, LDA and WCCN)
+ - IVectors generation 
 
 
 With these codes you can split all the work in a grid system that has MPI available.
@@ -101,29 +104,60 @@ Type the following command to see all the available options for the UBM trainer:
 
 In order to run this script in the MPI environment run the following code::
 
-   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options>
+   $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options>
 
 It is possible to use an xbob.db package as input or a file containing the list of features to train. To use a database, run the following code::
 
-   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options> database -d <database_name>
+   $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options> database -d <database_name>
 
 To use a regular file list, run the following code::
-   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options> list -f <file_name>
-
-
+   $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ubm_trainer.py <options> list -f <file_name>
 
 
 
 Within client variation matrix (U Matrix) for the ISV
 ======================================================
 
-Type the following command to see all the available options for the UBM trainer::
+Type the following command to see all the available options for the ISV (U Matrix)  trainer::
 
    $ ./bin/isv_U_trainer.py --help
 
 In order to run this script in the MPI environment run the following code::
 
-   $ mpiexec --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/isv_U_trainer.py <options>
+   $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/isv_U_trainer.py <options>
+
+
+Total Variability Matrix (T Matrix)
+===================================
+
+Type the following command to see all the available options to train Linear projectors for iVectors::
+
+   $ ./bin/train_linear_machines.py --help
+
+Unfortunately there is no parallel implementation for this code.
+
+
+
+Train Linear Projectors for iVectors (Whitening, LDA and WCCN)
+==============================================================
+
+Type the following command to see all the available options for the Total Variability Matrix trainer
+
+
+
+iVectors generation
+===================
+
+Type the following command to see all the available options for iVectors generation::
+
+   $ ./bin/generate_ivectors.py --help
+
+In order to run this script in the MPI environment run the following code::
+
+   $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/generate_ivectors.py <options>
+
+
+
 
 
 How to configure the MPI in my grid system?
