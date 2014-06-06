@@ -7,11 +7,37 @@ import bob
 import numpy
 import argparse
 from .. import utils
-from mpi4py import MPI
+#from mpi4py import MPI
 from parallel_trainers.trainers.utils.file_loader import FileLoader
 import os
 
 import logging
+
+def precompute_ivector_list(files,dim):
+  ivectors = []
+  for f in files:
+    ivectors.append(numpy.zeros(shape=(len(f),dim)))
+  return ivectors
+
+
+def flat_list_numpy(list_numpy):
+  
+  elements = 0
+  dim = 0
+  #precomputing
+  for l in list_numpy:  
+    elements += l.shape[0]
+    dim = l.shape[1]
+
+  #allocating
+  flat_numpy = numpy.zeros(shape=(elements, dim))
+  offset = 0
+  for l in list_numpy:
+    flat_numpy[offset:offset+l.shape[0],:] = l
+    offset += l.shape[0]
+
+  return flat_numpy
+
 
 def main():
 
@@ -20,13 +46,15 @@ def main():
 
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-  parser.add_argument('-o', '--output-dir', metavar='DIR', type=str, dest='output_dir', default='./ivectors/', help='Output Directory')
+  parser.add_argument('-o', '--output-dir', metavar='DIR', type=str, dest='output_dir', default='./linear_trainers/', help='Output Directory')
 
-  parser.add_argument('-w', '--wccn', type=str, dest='wccn_file', default='', help='WCCN ')
+  parser.add_argument('-i', '--whitening', type=str, dest='whitening_file', default='', help='Whitening Linear machine file. If \'\', will be trained!!!')
 
-  parser.add_argument('-t', '--tv-matrix-file', type=str, dest='tv_file', default='', help='TV Matrix File') 
+  parser.add_argument('-l', '--lda', type=str, dest='lda_file', default='', help='LDA Linear machine file. If \'\', will be trained!!!')
 
-  parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', default=False, help='Increases this script verbosity')
+  parser.add_argument('-d', '--dim_lda', type=int, dest='dim_lda', default='200', help='Dimension LDA.')
+
+  parser.add_argument('-w', '--wccn', type=str, dest='wccn_file', default='', help='WCCN Linear machine file. If \'\', will be trained!!!')
 
   parser.add_argument('-v', '--verbose', action='count', dest='verbose', help='Increases this script verbosity')
 
@@ -44,12 +72,13 @@ def main():
 
   args = parser.parse_args()
 
-  input_dir             = args.input_dir
+  #input_dir             = args.input_dir
   output_dir           = args.output_dir
-  verbose               = args.verbose
-  ubm_machine           = bob.machine.GMMMachine(bob.io.HDF5File(args.ubm))
-  ivector_machine       = bob.machine.IVectorMachine(bob.io.HDF5File(args.tv_file))
-  ivector_machine.ubm   = ubm_machine
+  whitening_file       = args.whitening_file
+  lda_file             = args.lda_file
+  wccn_file            = args.wccn_file
+  dim_lda              = args.dim_lda
+  verbose              = args.verbose
 
   databases = None
   file_name = None
@@ -62,43 +91,104 @@ def main():
       file_name = args.file_name
     
 
-  ###############
-  #SETTING UP MPI
-  ##############
-  comm        = MPI.COMM_WORLD #Starting MPI
-  rank        = comm.Get_rank() #RANK i.e. Who am I?
-  size        = comm.Get_size() #Number of parallel process for T-matrix calculation
-
   #Setting the log
-  logging.basicConfig(filename='mpi_ivectors.log',level=verbose, format='%(levelname)s %(asctime)s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
-
-  if(rank==0):
-    logging.info("Computing and iVectors")
+  logging.basicConfig(filename='mpi_linear_machines.log',level=verbose, format='%(levelname)s %(asctime)s %(message)s', datefmt='%d/%m/%Y %I:%M:%S %p')
 
   #################
   #Load a database or a file dir
   #################
   file_loader = FileLoader(dim=0)
   if(databases!=None):
-    files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME, file_loader, arrange_by_client=False)
+    files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME, file_loader, arrange_by_client=True)
   else:
     files        = open(file_name).readlines()
     for i in range(len(files)):
       files[i] = files[i].rstrip("\n")
 
-  subset_files = utils.split_files(files,rank,size)
+  utils.ensure_dir(output_dir)
+  dim = bob.io.load(files[0][0]).shape[0]
+
+  logging.info("Loading iVectors")      
+  ivectors = precompute_ivector_list(files,dim)
+
+  for i in range(len(files)):
+    for j in range(len(files[i])):
+      f = files[i][j]
+      ivectors[i][j,:] = bob.io.load(f)
+
+
   
-  for f in subset_files:
-    i_file = os.path.join(input_dir,f)
-    o_file = os.path.join(output_dir,f)
-    utils.ensure_dir(os.path.dirname(o_file))
+  ########################
+  #Training Whitening
+  ##########################
+  if(whitening_file != ""):
+    logging.info("Loading Whitening")
+    whitening_machine = bob.machine.LinearMachine(bob.io.HDF5File(whitening_file))
+  else:
+    logging.info("Training Whitening")
 
-    gmm_stats = bob.machine.GMMStats(bob.io.HDF5File(i_file))
-    ivector   = ivector_machine.forward(gmm_stats)
-    bob.io.save(ivector, o_file)
+    flat_numpy = flat_list_numpy(ivectors)
+    whitening_trainer = bob.trainer.WhiteningTrainer()
+    whitening_machine = bob.machine.LinearMachine(dim, dim)
+    whitening_trainer.train(whitening_machine, flat_numpy)
+    hdf5file = bob.io.HDF5File(os.path.join(output_dir, "Whitening.hdf5"),"w")
+    whitening_machine.save(hdf5file)
+    del hdf5file
+   
+  logging.info("Whitening iVectors")
+  for i in range(len(files)):
+    for j in range(len(files[i])):
+      f = files[i][j]
+      ivectors[i][j,:] = whitening_machine(ivectors[i][j,:])
 
-  if(rank==0):
-    logging.info("End!!!")
+
+  ####################
+  #Training LDA
+  #####################
+  if(lda_file != ""):
+    logging.info("Loading LDA")
+    lda_machine = bob.machine.LinearMachine(bob.io.HDF5File(lda_file))
+    dim_lda = lda_machine.shape[1]
+  else:
+    logging.info("LDA Training")
+    lda_trainer = bob.trainer.FisherLDATrainer(strip_to_rank=False)
+    lda_machine = bob.machine.LinearMachine(dim, dim)
+    lda_trainer.train(lda_machine, ivectors)
+    lda_machine.resize(dim, dim_lda)
+
+    hdf5file = bob.io.HDF5File(os.path.join(output_dir, "LDA.hdf5"),"w")
+    lda_machine.save(hdf5file)
+    del hdf5file
+
+
+  logging.info("LDA projected iVectors")
+  reduced_ivectors = precompute_ivector_list(files,dim_lda)
+  for i in range(len(files)):
+    for j in range(len(files[i])):
+      f = files[i][j]
+      reduced_ivectors[i][j,:] = lda_machine(ivectors[i][j,:])
+
+
+  ####################
+  #Training WCCN
+  #####################
+  if(wccn_file != ""):
+    logging.info("Loading WCCN")
+    wccn_machine = bob.machine.LinearMachine(bob.io.HDF5File(wccn_file))
+  else:
+    logging.info("WCCN Training")
+    wccn_trainer = bob.trainer.WCCNTrainer()
+    wccn_machine = bob.machine.LinearMachine(dim_lda, dim_lda)
+    wccn_trainer.train(wccn_machine, reduced_ivectors)
+
+    hdf5file = bob.io.HDF5File(os.path.join(output_dir, "WCCN.hdf5"),"w")
+    wccn_machine.save(hdf5file)
+    del hdf5file
+
+
+
+
+  logging.info("End!!!")
   
 
 if __name__ == "__main__":

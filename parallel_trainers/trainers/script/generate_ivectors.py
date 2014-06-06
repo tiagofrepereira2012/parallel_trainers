@@ -45,7 +45,7 @@ def main():
   args = parser.parse_args()
 
   input_dir             = args.input_dir
-  output_dir           = args.output_dir
+  output_dir            = args.output_dir
   verbose               = args.verbose
   ubm_machine           = bob.machine.GMMMachine(bob.io.HDF5File(args.ubm))
   ivector_machine       = bob.machine.IVectorMachine(bob.io.HDF5File(args.tv_file))
