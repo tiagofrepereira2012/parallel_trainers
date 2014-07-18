@@ -130,25 +130,19 @@ In order to run this script in the MPI environment run the following code::
 Total Variability Matrix (T Matrix)
 ===================================
 
-Type the following command to see all the available options for the Total Variability Matrix trainer::
+Type the following command to see all the available options to train Linear projectors for iVectors::
 
-   $ ./bin/ivector_TV_trainer.py --help
+   $ ./bin/train_linear_machines.py --help
 
-In order to run this script in the MPI environment run the following code::
-
-   $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/ivector_TV_trainer.py <options>
-
+Unfortunately there is no parallel implementation for this code.
 
 
 
 Train Linear Projectors for iVectors (Whitening, LDA and WCCN)
 ==============================================================
 
-Type the following command to see all the available options to train Linear projectors for iVectors::
+Type the following command to see all the available options for the Total Variability Matrix trainer
 
-   $ ./bin/train_linear_machines.py --help
-
-Unfortunately there is no parallel implementation for this code.
 
 
 iVectors generation
@@ -161,6 +155,8 @@ Type the following command to see all the available options for iVectors generat
 In order to run this script in the MPI environment run the following code::
 
    $ mpirun --np <number_of_nodes> --hosts=<available_hosts (comma separated)> ./bin/generate_ivectors.py <options>
+
+
 
 
 
