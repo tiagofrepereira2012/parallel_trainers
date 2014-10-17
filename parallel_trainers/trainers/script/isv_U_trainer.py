@@ -2,7 +2,7 @@
 # vim: set fileencoding=utf-8 :
 # Tiago de Freitas Pereira <tiagofrepereira@gmail.com>
 # Fri Dec 08 14:22 BRST 2013
-mtklhmlkftmhlkfgm
+# Modified by Flávio Simões <simoes@cpqd.com.br> - Thu Oct 16 15:45 - 2014
 
 import bob
 import numpy
@@ -21,7 +21,7 @@ def main():
   DATABASES_RESOURCE_NAME       = "databases"
 
   parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-
+  
   parser.add_argument('-o', '--output-file', metavar='DIR', type=str, dest='output_file', default='ISV.hdf5', help='Output file.')
 
   parser.add_argument('-r', '--iterations', type=int, dest='iterations', default=10, help='Number of iterations.')
@@ -37,6 +37,8 @@ def main():
   parser.add_argument('-e', '--relevance-factor', type=float, dest='relevance_factor', default=4, help='Relevance factor for the user offset')
 
   parser.add_argument('-f', '--facereclib', action='store_true', dest='facereclib', default=False, help='Is the output compatible with with the IDIAP Facereclib?')
+
+  parser.add_argument('-t', '--gmmstatsinput', action='store_true', dest='gmmstatsinput', default=False, help='Do input files represent GMM statistics?')
 
   parser.add_argument('-d','--dimensionality',dest='dim', type=int, required=True, default=40, help = 'Dimensionality of the feature vector')
 
@@ -60,13 +62,15 @@ def main():
   u_subspace            = args.u_subspace
   relevance_factor      = args.relevance_factor
   facereclib            = args.facereclib
+  gmmstatsinput         = args.gmmstatsinput
   gaussians             = args.gaussians
   dim                   = args.dim 
   
 
   databases = None
   file_name = None
-  base_ubm  = utils.load_gmm_from_file(ubm, gaussians, dim)
+  #base_ubm  = utils.load_gmm_from_file(ubm, gaussians, dim)
+  base_ubm  = utils.load_gmm_from_file(ubm)
 
 
   dict_args = vars(args)
@@ -95,9 +99,11 @@ def main():
   if(databases!=None):
     files = utils.load_list_from_resources(databases, DATABASES_RESOURCE_NAME, file_loader, arrange_by_client=True)
   else:
-    files = os.listdir(file_name)
-    for i in range(len(files)):
-      files[i] = os.path.join(file_name, files[i])
+    rows = numpy.loadtxt(file_name,dtype='str',delimiter=' ')
+    list_labels = list(rows[:,0])
+    list_files = list(rows[:,1])
+    files = list(set(list_labels))
+
 
   subset_files = utils.split_files(files,rank,size)
 
@@ -112,21 +118,23 @@ def main():
     stats = []
     #If was not a database resource we must execute a listdir
     if(databases == None):
-      listdir = os.listdir(client_files)
-      for i in range(len(listdir)):
-        listdir[i] = os.path.join(client_files,listdir[i])
+      listdir = list(numpy.array(list_files)[numpy.array(list_labels)==client_files])
       client_files = listdir
 
     for f in client_files: #for each user file, acc statistics
-      features = file_loader.load_features_from_file(f)      
       stats_client = bob.machine.GMMStats(gaussians,dim)
-      base_ubm.acc_statistics(features,stats_client)
+      if gmmstatsinput:
+        f = bob.io.HDF5File(f, 'r')
+        stats_client.load(f)
+      else:
+        features = file_loader.load_features_from_file(f)      
+        base_ubm.acc_statistics(features,stats_client)
       stats.append(stats_client)
 
     client_stats.append(stats)
 
 
-  #################
+  ##############
   # Training U
   ##############
 
