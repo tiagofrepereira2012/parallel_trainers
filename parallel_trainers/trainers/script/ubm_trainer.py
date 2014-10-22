@@ -2,6 +2,7 @@
 # vim: set fileencoding=utf-8 :
 # Tiago de Freitas Pereira <tiagofrepereira@gmail.com>
 # Fri Dec 08 14:22 BRST 2013
+# Modified by Jose Stuchi <jastuchi@cpqd.com.br> - Wed Oct 22 15:45 - 2014
 
 import bob
 import numpy
@@ -108,7 +109,7 @@ def main():
   ###
   #Setting UP the initialization
   if(ubm_initialization != ""):
-    base_ubm = utils.load_gmm_from_file(ubm_initialization, gaussians, dim)
+    base_ubm = utils.load_gmm_from_file(ubm_initialization)
   else:
 
     mpi_kmeans_trainer = MPIKmeansTrainer(comm, gaussians, dim)
